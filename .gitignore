@@ -1,0 +1,11 @@
+*.IMA
+*.zip
+*.pyc
+*.png
+events*
+*.pt
+*.pth
+.pytest_cache/
+/__pycache__/
+.vscode/
+.pytest_cache
