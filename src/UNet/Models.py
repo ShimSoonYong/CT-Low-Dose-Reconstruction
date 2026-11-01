@@ -116,11 +116,11 @@ class U_Net(nn.Module):
         d2 = torch.cat((e1, d2), dim=1)
         d2 = self.Up_conv2(d2)
 
-        out = self.Conv(d2)
+        out = self.Conv(d2) + x
 
         # d1 = self.active(out)
 
-        return out + x  # residual learning
+        return out.clamp(0, 1)
 
 
 class Recurrent_block(nn.Module):
@@ -244,11 +244,11 @@ class R2U_Net(nn.Module):
         d2 = torch.cat((e1, d2), dim=1)
         d2 = self.Up_RRCNN2(d2)
 
-        out = self.Conv(d2)
+        out = self.Conv(d2) + x
 
         # out = self.active(out)
 
-        return out + x  # residual learning
+        return out.clamp(0, 1)
 
 
 class Attention_block(nn.Module):
@@ -367,11 +367,11 @@ class AttU_Net(nn.Module):
         d2 = torch.cat((x1, d2), dim=1)
         d2 = self.Up_conv2(d2)
 
-        out = self.Conv(d2)
+        out = self.Conv(d2) + x
 
         #  out = self.active(out)
 
-        return out + x  # residual learning
+        return out.clamp(0, 1)
 
 
 class R2AttU_Net(nn.Module):
@@ -453,11 +453,11 @@ class R2AttU_Net(nn.Module):
         d2 = torch.cat((e1, d2), dim=1)
         d2 = self.Up_RRCNN2(d2)
 
-        out = self.Conv(d2)
+        out = self.Conv(d2) + x
 
         #  out = self.active(out)
 
-        return out + x  # residual learning
+        return out.clamp(0, 1)
 
 
 # For nested 3 channels are required
@@ -565,5 +565,5 @@ class NestedUNet(nn.Module):
         x1_3 = self.conv1_3(torch.cat([x1_0, x1_1, x1_2, self.Up(x2_2)], 1))
         x0_4 = self.conv0_4(torch.cat([x0_0, x0_1, x0_2, x0_3, self.Up(x1_3)], 1))
 
-        output = self.final(x0_4)
-        return output + x  # residual learning
+        output = self.final(x0_4) + x
+        return output.clamp(0, 1)  # residual learning

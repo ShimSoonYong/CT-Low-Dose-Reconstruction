@@ -191,6 +191,12 @@ def get_args() -> Namespace:
         help="학습률(Learning Rate) (기본값: 1e-5)"
     )
     parser.add_argument(
+        "--grad_norm", 
+        type=float, 
+        default=1.0, 
+        help="그레디언트 노름의 상한 (기본값: 1.0)"
+    )
+    parser.add_argument(
         "--device", 
         type=str, 
         default="cuda", 

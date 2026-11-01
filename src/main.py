@@ -1,6 +1,6 @@
 import torch
-import torch.nn as nn
 from pathlib import Path
+from torch import nn, optim
 
 from .trainer import Trainer
 from .loss import PSNR, SSIM, SSIMLoss
@@ -17,28 +17,40 @@ def main(args):
     augs = get_augs(args.augment)
 
     # 3. 디바이스 설정
-    device = torch.device("cuda" if torch.cuda.is_available() and not getattr(args, "no_cuda", False) else "cpu")
+    device = torch.device(
+        "cuda"
+        if torch.cuda.is_available() and not getattr(args, "no_cuda", False)
+        else "cpu"
+    )
     print(f"[*] Using device: {device}")
 
     # 4. 데이터셋 디렉토리 경로 설정
-    root = Path(__file__).resolve().parent.parent / getattr(args, "data_root", "dataset/CT_low_dose_reconstruction_dataset/Original Data/")
-    
+    root = Path(__file__).resolve().parent.parent / getattr(
+        args, "data_root", "dataset/CT_low_dose_reconstruction_dataset/Original Data/"
+    )
+
     target_dir = root / getattr(args, "target_dir", "Full Dose/")
     input_dir = root / getattr(args, "input_dir", "Quarter Dose/")
 
-    print(f"[*] Loading datasets from:\n - Full Dose (Target): {target_dir}\n - Quarter Dose (Input): {input_dir}")
+    print(
+        f"[*] Loading datasets from:\n - Full Dose (Target): {target_dir}\n - Quarter Dose (Input): {input_dir}"
+    )
 
     # 5. 데이터셋 로드 및 데이터로더 생성
-    train_set, val_set, test_set = data_load(target_dir, input_dir, augment=augs, seed=args.seed)
-    
+    train_set, val_set, test_set = data_load(
+        target_dir, input_dir, augment=augs, seed=args.seed
+    )
+
     batch_size = getattr(args, "batch_size", 4)
     num_workers = getattr(args, "num_workers", 12)
-    
+
     train_loader, val_loader, test_loader = get_loader(
-        train_set, val_set, test_set, 
-        batch_size=batch_size, 
+        train_set,
+        val_set,
+        test_set,
+        batch_size=batch_size,
         num_workers=num_workers,
-        seed=args.seed
+        seed=args.seed,
     )
 
     # 6. 모델(네트워크) 선택 및 초기화
@@ -54,7 +66,7 @@ def main(args):
         network = AttU_Net(img_ch=in_channels, output_ch=out_channels)
     elif model_name == "R2AttU_Net":
         network = R2AttU_Net(in_ch=in_channels, out_ch=out_channels)
-    elif model_name == "NestedUNet" :
+    elif model_name == "NestedUNet":
         network = NestedUNet(in_ch=in_channels, out_ch=out_channels)
     else:
         raise ValueError(f"Unsupported model type: {model_name}")
@@ -62,19 +74,26 @@ def main(args):
     network.to(device)
 
     # 7. 옵티마이저 및 손실 함수(Loss) 설정
+    max_epochs = getattr(args, "epochs", 10)
     lr = getattr(args, "lr", 1e-4)
-    optimizer = torch.optim.AdamW(network.parameters(), lr=lr)
-    loss_function = lambda x, y: nn.L1Loss()(x, y) + 0.1 * SSIMLoss(spatial_dims=2, data_range=1.0)(x, y)
+    optimizer = optim.AdamW(network.parameters(), lr=lr)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(
+        optimizer=optimizer, T_max=max_epochs // 2, eta_min=1e-8
+    )
+    loss_function = lambda x, y: (
+        nn.L1Loss()(x, y) + 0.1 * SSIMLoss(spatial_dims=2, data_range=1.0)(x, y)
+    )
 
     # 8. 검증 평가지표(Metric) 설정
     key_val_metric = {
         "val_psnr": PSNR(max_val=1, device=args.device),
-        "val_ssim": SSIM(spatial_dims=2, max_val=1, device=args.device)
+        "val_ssim": SSIM(spatial_dims=2, max_val=1, device=args.device),
     }
 
     # 9. Trainer 초기화 및 학습(fit) 실행
-    max_epochs = getattr(args, "epochs", 10)
-    log_dir = Path(getattr(args, "log_dir", "./log")) / Path(model_name + "_" + "".join(args.augment))
+    log_dir = Path(getattr(args, "log_dir", "./log")) / Path(
+        model_name + "_" + "".join(args.augment)
+    )
     patience = getattr(args, "patience", 5)
 
     trainer = Trainer(
@@ -82,12 +101,15 @@ def main(args):
         train_loader=train_loader,
         val_loader=val_loader,
         optimizer=optimizer,
+        lr_scheduler=scheduler,
         loss_function=loss_function,
         max_epochs=max_epochs,
         device=str(device),
         log_dir=log_dir,
         key_val_metric=key_val_metric,
-        patience=patience
+        patience=patience,
+        max_grad_norm=args.grad_norm,
+        mode="max",
     )
 
     print("[*] Training")
