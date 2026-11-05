@@ -78,7 +78,7 @@ def main(args):
     lr = getattr(args, "lr", 1e-4)
     optimizer = optim.AdamW(network.parameters(), lr=lr)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(
-        optimizer=optimizer, T_max=max_epochs // 2, eta_min=1e-6
+        optimizer=optimizer, T_max=max_epochs, eta_min=1e-6
     )
     loss_function = lambda x, y: (
         nn.L1Loss()(x, y) + 0.1 * SSIMLoss(spatial_dims=2, data_range=1.0)(x, y)

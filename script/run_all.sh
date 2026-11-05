@@ -31,7 +31,7 @@ for seed in "${seeds[@]}"; do
                     --model '$model' \
                     --epochs 500 \
                     --lr 1e-4 \
-                    --grad_norm 1e-4 \
+                    --grad_norm 0.01 \
                     --patience 10 \
                     --seed '$seed'"
       else
@@ -44,7 +44,7 @@ for seed in "${seeds[@]}"; do
                     --model '$model' \
                     --epochs 500 \
                     --lr 1e-4 \
-                    --grad_norm 1e-4 \
+                    --grad_norm 0.01 \
                     --augment '$aug' \
                     --patience 10 \
                     --seed '$seed'"
