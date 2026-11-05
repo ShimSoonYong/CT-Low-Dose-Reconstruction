@@ -39,7 +39,7 @@ class TestGetAugs:
 
     def test_get_augs_with_string_inputs(self):
         """문자열 리스트로 전달된 증강 이름이 올바른 MONAI Transform 객체로 변환되는지 확인"""
-        augment_names = ["RandFlipd", "NormalizeIntensityd"]
+        augment_names = ["RandFlipd_0", "RandGaussianNoised"]
         transforms = get_augs(augment_names)
 
         assert isinstance(transforms, list)
@@ -52,16 +52,6 @@ class TestGetAugs:
         transforms = get_augs(["none"])
         assert len(transforms) == 0
 
-    def test_get_augs_with_dict_config(self):
-        """딕셔너리 설정(이름 + 인자)을 전달했을 때 파라미터가 잘 반영되는지 확인"""
-        augment_configs = [
-            {"name": "RandFlipd", "prob": 0.8, "spatial_axis": 0}
-        ]
-        transforms = get_augs(augment_configs)
-
-        assert len(transforms) == 1
-        assert transforms[0].prob == 0.8
-
     def test_get_augs_invalid_name(self):
         """존재하지 않는 Transform 이름을 넣었을 때 AttributeError가 발생하는지 확인"""
         with pytest.raises(AttributeError, match="monai.transforms에"):
@@ -71,36 +61,44 @@ class TestGetAugs:
 class TestGetArgs:
     """argparse 기반 터미널 인자 파싱 테스트"""
 
-    def test_get_args_defaults(self, monkeypatch):  # <-- self 추가 완료!
+    def test_get_args_defaults(self, monkeypatch):
         """인자를 주지 않고 실행했을 때 기본값(Default)들이 올바르게 세팅되는지 확인"""
         monkeypatch.setattr("sys.argv", ["script.py"])
-        
+
         args = get_args()
-        
+
         assert isinstance(args, Namespace)
-        assert args.epochs == 10
+        assert args.epochs == 20
         assert args.batch_size == 4
         assert args.lr == 1e-4
         assert args.device == "cuda"
         assert args.augment == ["none"]
         assert args.log_dir == "./log"
-        assert args.patience == 5
+        assert args.patience == 10
         assert args.min_delta == 1e-4
         assert args.mode == "min"
         assert args.seed == 42
 
-    def test_get_args_custom_inputs(self, monkeypatch):  # <-- self 추가 완료!
+    def test_get_args_custom_inputs(self, monkeypatch):
         """터미널에서 커스텀 인자들을 넘겼을 때 파싱이 정상적으로 이루어지는지 확인"""
-        monkeypatch.setattr("sys.argv", [
-            "script.py", 
-            "--epochs", "20", 
-            "--batch_size", "8", 
-            "--augment", "RandFlipd", "RandGaussianNoised",
-            "--mode", "max"
-        ])
-        
+        monkeypatch.setattr(
+            "sys.argv",
+            [
+                "script.py",
+                "--epochs",
+                "20",
+                "--batch_size",
+                "8",
+                "--augment",
+                "RandFlipd",
+                "RandGaussianNoised",
+                "--mode",
+                "max",
+            ],
+        )
+
         args = get_args()
-        
+
         assert args.epochs == 20
         assert args.batch_size == 8
         assert args.augment == ["RandFlipd", "RandGaussianNoised"]

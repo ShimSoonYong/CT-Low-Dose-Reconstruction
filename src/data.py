@@ -14,6 +14,7 @@ from sklearn.model_selection import ShuffleSplit
 
 from .utils import seed_worker
 
+
 def get_augment(augment: list | None):
     base_transforms = [
         LoadImaged(keys=["quarter", "full"], reader="ITKReader"),
@@ -34,17 +35,25 @@ def get_augment(augment: list | None):
         transforms = Compose(base_transforms + augment)
     else:
         transforms = Compose(base_transforms)
-        
+
     return transforms
 
-ROOT = Path(__file__).resolve().parent.parent / "dataset" / "CT_low_dose_reconstruction_dataset/Original Data/"
+
+ROOT = (
+    Path(__file__).resolve().parent.parent
+    / "dataset"
+    / "CT_low_dose_reconstruction_dataset/Original Data/"
+)
+
+
 def data_load(
-    target_dir: str|Path = ROOT / "Full Dose/",
-    input_dir: str|Path = ROOT / "Quarter Dose/",
+    target_dir: str | Path = ROOT / "Full Dose/",
+    input_dir: str | Path = ROOT / "Quarter Dose/",
     augment: list | None = None,
     seed: int = 42,
 ):
-    transforms = get_augment(augment)
+    train_transforms = get_augment(augment)
+    test_transforms = get_augment(None)
 
     target_path = sorted(list(Path(target_dir).rglob("*.IMA")))
     input_path = sorted(list(Path(input_dir).rglob("*.IMA")))
@@ -66,7 +75,7 @@ def data_load(
         for full, quarter in zip(full_path, quarter_path)
     ]
 
-    test_set = Dataset(data=test_path, transform=transforms)
+    test_set = Dataset(data=test_path, transform=test_transforms)
 
     # Others: train & val
     full_path = [
@@ -79,18 +88,15 @@ def data_load(
         for path in input_path
         if not any("L192" in p or "L506" in p for p in path.parts)
     ]
-    train_path = [
+    learnable_path = [
         {"quarter": quarter, "full": full}
         for full, quarter in zip(full_path, quarter_path)
     ]
 
-    learnable_set = Dataset(data=train_path, transform=transforms)
-
     ss = ShuffleSplit(n_splits=1, test_size=0.2, train_size=0.8, random_state=seed)
     train_index, val_index = next(iter(ss.split(X=full_path)))
-    train_set = Subset(learnable_set, train_index.tolist()).dataset
-    val_set = Subset(learnable_set, val_index.tolist()).dataset
-    #print(train_set[0])
+    train_set = Dataset(data=learnable_path[train_index], transform=train_transforms)
+    val_set = Dataset(data=learnable_path[val_index], transform=test_transforms)
 
     return train_set, val_set, test_set
 
@@ -102,7 +108,7 @@ def get_loader(
     batch_size: int,
     num_workers: int,
     seed: int = 42,
-    device: str = "cpu"
+    device: str = "cpu",
 ):
     g = torch.Generator(device=device)
     g.manual_seed(seed)
