@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from pathlib import Path
 from monai.transforms import (
     Compose,
@@ -88,10 +89,12 @@ def data_load(
         for path in input_path
         if not any("L192" in p or "L506" in p for p in path.parts)
     ]
-    learnable_path = [
-        {"quarter": quarter, "full": full}
-        for full, quarter in zip(full_path, quarter_path)
-    ]
+    learnable_path = np.array(
+        [
+            {"quarter": quarter, "full": full}
+            for full, quarter in zip(full_path, quarter_path)
+        ]
+    )
 
     ss = ShuffleSplit(n_splits=1, test_size=0.2, train_size=0.8, random_state=seed)
     train_index, val_index = next(iter(ss.split(X=full_path)))
