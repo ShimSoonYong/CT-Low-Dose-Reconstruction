@@ -73,6 +73,7 @@ def main(args):
         raise ValueError(f"Unsupported model type: {model_name}")
 
     network.to(device)
+    network.compile()
 
     # 7. 옵티마이저 및 손실 함수(Loss) 설정
     max_epochs = getattr(args, "epochs", 10)
