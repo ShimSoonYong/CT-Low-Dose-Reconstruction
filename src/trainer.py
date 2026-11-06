@@ -64,16 +64,15 @@ class Trainer:
         os.makedirs(self.log_dir, exist_ok=True)
         self.network.to(self.device)
 
-        # TensorBoard 로깅을 위한 SummaryWriter 초기화
+        # 4. 단일 SummaryWriter 생성 (핸들러들과 공유)
         self.writer = SummaryWriter(log_dir=self.log_dir)
 
-        # 1. 배치 데이터 파싱 함수 (prepare_batch)
         def custom_prepare_batch(batchdata, device, non_blocking):
             if isinstance(batchdata, list):
                 batchdata = batchdata[0]
 
             low_res = batchdata.get("quarter", batchdata.get("low_res"))
-            high_res = batchdata.get("full", batchdata.get("full"))
+            high_res = batchdata.get("full", batchdata.get("high_res"))
 
             if low_res is None or high_res is None:
                 raise KeyError(
@@ -85,7 +84,6 @@ class Trainer:
                 high_res.to(device=device, non_blocking=non_blocking),
             )
 
-        # 2. 텐서보드 이미지 로깅을 위한 배치 변환 함수 (batch_transform)
         def custom_batch_transform(batch):
             if isinstance(batch, list):
                 batch = batch[0]
@@ -97,7 +95,7 @@ class Trainer:
             TensorBoardStatsHandler(
                 tag_name="train_loss",
                 output_transform=from_engine(["loss"], first=True),
-                log_dir=self.log_dir,
+                summary_writer=self.writer,
             ),
             TensorBoardImageHandler(
                 batch_transform=custom_batch_transform,
@@ -105,7 +103,7 @@ class Trainer:
                 max_channels=1,
                 max_frames=4,
                 epoch_level=True,
-                log_dir=self.log_dir,
+                summary_writer=self.writer,
             ),
             CheckpointSaver(
                 save_dir=self.log_dir,
@@ -117,7 +115,6 @@ class Trainer:
 
         self.eval_handlers = []
 
-        # 3. SupervisedTrainer 설정
         self.trainer = SupervisedTrainer(
             device=self.device,
             max_epochs=self.max_epochs,
@@ -134,25 +131,20 @@ class Trainer:
         def grad_clip_handler(engine):
             clip_grad_norm_(self.network.parameters(), max_norm=self.max_grad_norm)
 
-        # 공통 평가용 메트릭 정의 팩토리 함수 (Validation & Test 공용)
         def get_evaluation_metrics(prefix="val"):
             return {
                 f"{prefix}_loss": Loss(
                     loss_fn=self.loss_function,
-                    output_transform=from_engine(["pred", "label"]),
                 ),
                 f"{prefix}_psnr": PSNRMetric(
                     max_val=1.0,
-                    output_transform=from_engine(["pred", "label"]),
                 ),
                 f"{prefix}_ssim": SSIMMetric(
                     spatial_dims=2,
                     data_range=1.0,
-                    output_transform=from_engine(["pred", "label"]),
                 ),
             }
 
-        # 4. SupervisedEvaluator 설정 (Validation)
         self.evaluator = None
         if self.val_loader is not None:
             if key_val_metric is None:
@@ -174,7 +166,6 @@ class Trainer:
                 current_iteration = engine.state.iteration
                 self.epoch, self.iteration = current_epoch, current_iteration
 
-                # 현재 학습률(Learning Rate) TensorBoard 로깅
                 if self.optimizer is not None:
                     current_lr = self.optimizer.param_groups[0]["lr"]
                     self.writer.add_scalar(
@@ -186,24 +177,11 @@ class Trainer:
                     self.evaluator.state.epoch = current_epoch
                     self.evaluator.state.iteration = current_iteration
 
-                    # 스케줄러 업데이트 처리 (검증 주기에 맞춰 연동)
-                    if self.lr_scheduler is not None:
-                        if isinstance(
-                            self.lr_scheduler,
-                            torch.optim.lr_scheduler.ReduceLROnPlateau,
-                        ):
-                            val_loss_val = self.evaluator.state.metrics.get(
-                                "val_loss", 0.0
-                            )
-                            if isinstance(val_loss_val, torch.Tensor):
-                                val_loss_val = val_loss_val.item()
-                            self.lr_scheduler.step(val_loss_val)
-                        else:
-                            self.lr_scheduler.step()
-
+                    # 1. Validation 런을 먼저 실행하여 최신 val_metrics 획득
                     val_metrics = self.eval()
                     print(f"[Epoch {current_epoch}] Validation Complete")
 
+                    # 메트릭 로깅
                     for metric_name, metric_value in val_metrics.items():
                         if isinstance(metric_value, torch.Tensor):
                             metric_value = metric_value.item()
@@ -212,10 +190,25 @@ class Trainer:
                         )
                     self.writer.flush()
 
-                    # 얼리스타핑 및 베스트 모델 갱신 기준
-                    current_score = val_metrics.get(
-                        "val_psnr", val_metrics.get("val_loss", 0.0)
-                    )
+                    # 2. 획득한 최신 Metric으로 스케줄러 업데이트
+                    if self.lr_scheduler is not None:
+                        if isinstance(
+                            self.lr_scheduler,
+                            torch.optim.lr_scheduler.ReduceLROnPlateau,
+                        ):
+                            val_loss_val = val_metrics.get("val_loss", 0.0)
+                            if isinstance(val_loss_val, torch.Tensor):
+                                val_loss_val = val_loss_val.item()
+                            self.lr_scheduler.step(val_loss_val)
+                        else:
+                            self.lr_scheduler.step()
+
+                    # 3. 얼리스타핑 지표 설정 (mode에 따라 loss 혹은 psnr 기준 분기)
+                    if self.mode == "min":
+                        current_score = val_metrics.get("val_loss", 0.0)
+                    else:
+                        current_score = val_metrics.get("val_psnr", 0.0)
+
                     if isinstance(current_score, torch.Tensor):
                         current_score = current_score.item()
 
@@ -235,7 +228,6 @@ class Trainer:
                             f"[-] Validation score did not improve. Patience: {self.patience_counter}/{self.patience}"
                         )
 
-                    # 조기 종료 체크
                     if self.patience_counter >= self.patience:
                         print(f"[!] Early stopping triggered at epoch {current_epoch}!")
                         engine.terminate()
@@ -311,7 +303,6 @@ class Trainer:
         return self.evaluator.state.metrics
 
     def _load_and_test(self):
-        """최고 성능 가중치를 로드하여 test_loader 데이터로 평가를 진행하고 텐서보드에 로깅합니다."""
         if self.test_loader is None:
             print("[*] test_loader is not provided. Skipping test evaluation.")
             return
@@ -329,20 +320,16 @@ class Trainer:
         self.network.load_state_dict(checkpoint["model_state_dict"])
         self.network.eval()
 
-        # 테스트용 메트릭 설정
         test_metrics_dict = {
             "test_loss": Loss(
                 loss_fn=self.loss_function,
-                output_transform=from_engine(["pred", "label"]),
             ),
             "test_psnr": PSNRMetric(
                 max_val=1.0,
-                output_transform=from_engine(["pred", "label"]),
             ),
             "test_ssim": SSIMMetric(
                 spatial_dims=2,
                 data_range=1.0,
-                output_transform=from_engine(["pred", "label"]),
             ),
         }
 
@@ -350,7 +337,7 @@ class Trainer:
             if isinstance(batchdata, list):
                 batchdata = batchdata[0]
             low_res = batchdata.get("quarter", batchdata.get("low_res"))
-            high_res = batchdata.get("full", batchdata.get("full"))
+            high_res = batchdata.get("full", batchdata.get("high_res"))
             if low_res is None or high_res is None:
                 raise KeyError(
                     f"Batch keys not found. Available keys: {list(batchdata.keys())}"

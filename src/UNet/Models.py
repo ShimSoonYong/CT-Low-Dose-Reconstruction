@@ -566,4 +566,4 @@ class NestedUNet(nn.Module):
         x0_4 = self.conv0_4(torch.cat([x0_0, x0_1, x0_2, x0_3, self.Up(x1_3)], 1))
 
         output = self.final(x0_4) + x
-        return output.clamp(0, 1)  # residual learning
+        return output.clamp(0, 1)
