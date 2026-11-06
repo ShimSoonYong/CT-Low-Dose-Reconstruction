@@ -1,3 +1,4 @@
+from numpy import test
 import torch
 from pathlib import Path
 from torch import nn, optim
@@ -100,6 +101,7 @@ def main(args):
         network=network,
         train_loader=train_loader,
         val_loader=val_loader,
+        test_loader=test_loader,
         optimizer=optimizer,
         lr_scheduler=scheduler,
         loss_function=loss_function,
@@ -112,12 +114,9 @@ def main(args):
         mode="max",
     )
 
-    print("[*] Training")
+    print("[*] Fitting")
     trainer.fit()
-
-    print("[*] Test start")
-    trainer.val_loader = test_loader
-    trainer.eval()
+    print("[*] Fitting complete")
 
 
 if __name__ == "__main__":

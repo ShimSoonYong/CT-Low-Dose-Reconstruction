@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from torch.nn.utils import clip_grad_norm_
 from monai.engines import SupervisedTrainer, SupervisedEvaluator
+from monai.metrics import PSNRMetric, SSIMMetric  # 👈 PSNR, SSIM 메트릭 임포트 추가
 from monai.handlers import (
     TensorBoardStatsHandler,
     TensorBoardImageHandler,
@@ -23,6 +24,7 @@ class Trainer:
         network: nn.Module,
         train_loader: DataLoader,
         val_loader: Optional[DataLoader] = None,
+        test_loader: Optional[DataLoader] = None,
         optimizer: Optional[torch.optim.Optimizer] = None,
         lr_scheduler: Optional[Any] = None,
         loss_function: Optional[nn.Module] = None,
@@ -38,13 +40,16 @@ class Trainer:
         self.network = network
         self.train_loader = train_loader
         self.val_loader = val_loader
+        self.test_loader = test_loader
         self.optimizer = optimizer
-        self.lr_scheduler = lr_scheduler  # <-- 스케줄러 저장
+        self.lr_scheduler = lr_scheduler
         self.loss_function = loss_function or nn.L1Loss()
         self.max_epochs = max_epochs
         self.device = torch.device(device)
         self.log_dir = str(log_dir)
         self.max_grad_norm = max_grad_norm
+        self.epoch = 0
+        self.iteration = 0
 
         self.patience = patience
         self.min_delta = min_delta
@@ -59,7 +64,7 @@ class Trainer:
         os.makedirs(self.log_dir, exist_ok=True)
         self.network.to(self.device)
 
-        # TensorBoard 수동 로깅을 위한 SummaryWriter 초기화
+        # TensorBoard 로깅을 위한 SummaryWriter 초기화
         self.writer = SummaryWriter(log_dir=self.log_dir)
 
         # 1. 배치 데이터 파싱 함수 (prepare_batch)
@@ -129,15 +134,29 @@ class Trainer:
         def grad_clip_handler(engine):
             clip_grad_norm_(self.network.parameters(), max_norm=self.max_grad_norm)
 
-        # 4. SupervisedEvaluator 설정
+        # 공통 평가용 메트릭 정의 팩토리 함수 (Validation & Test 공용)
+        def get_evaluation_metrics(prefix="val"):
+            return {
+                f"{prefix}_loss": Loss(
+                    loss_fn=self.loss_function,
+                    output_transform=from_engine(["pred", "label"]),
+                ),
+                f"{prefix}_psnr": PSNRMetric(
+                    max_val=1.0,
+                    output_transform=from_engine(["pred", "label"]),
+                ),
+                f"{prefix}_ssim": SSIMMetric(
+                    spatial_dims=2,
+                    data_range=1.0,
+                    output_transform=from_engine(["pred", "label"]),
+                ),
+            }
+
+        # 4. SupervisedEvaluator 설정 (Validation)
         self.evaluator = None
         if self.val_loader is not None:
             if key_val_metric is None:
-                val_loss_metric = Loss(
-                    loss_fn=self.loss_function,
-                    output_transform=from_engine(["pred", "label"]),
-                )
-                key_val_metric = {"val_loss": val_loss_metric}
+                key_val_metric = get_evaluation_metrics(prefix="val")
 
             self.evaluator = SupervisedEvaluator(
                 device=self.device,
@@ -153,21 +172,7 @@ class Trainer:
             def run_evaluation_and_checkpoint(engine):
                 current_epoch = engine.state.epoch
                 current_iteration = engine.state.iteration
-                print(f"\n[Epoch {current_epoch}] Running validation...")
-
-                # [스케줄러 업데이트 처리]
-                if self.lr_scheduler is not None:
-                    # ReduceLROnPlateau처럼 검증 스코어(loss 등)를 인자로 받는 스케줄러 대응
-                    if isinstance(
-                        self.lr_scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau
-                    ):
-                        # 임시로 검증 손실을 가져오거나 val_loss 메트릭 활용
-                        val_loss_val = self.evaluator.state.metrics.get("val_loss", 0.0)
-                        if isinstance(val_loss_val, torch.Tensor):
-                            val_loss_val = val_loss_val.item()
-                        self.lr_scheduler.step(val_loss_val)
-                    else:
-                        self.lr_scheduler.step()
+                self.epoch, self.iteration = current_epoch, current_iteration
 
                 # 현재 학습률(Learning Rate) TensorBoard 로깅
                 if self.optimizer is not None:
@@ -176,47 +181,64 @@ class Trainer:
                         "learning_rate", current_lr, current_iteration
                     )
 
-                self.evaluator.state.epoch = current_epoch
-                self.evaluator.state.iteration = current_iteration
+                if current_epoch % 10 == 0:
+                    print(f"\n[Epoch {current_epoch}] Running validation...")
+                    self.evaluator.state.epoch = current_epoch
+                    self.evaluator.state.iteration = current_iteration
 
-                self.evaluator.run()
+                    # 스케줄러 업데이트 처리 (검증 주기에 맞춰 연동)
+                    if self.lr_scheduler is not None:
+                        if isinstance(
+                            self.lr_scheduler,
+                            torch.optim.lr_scheduler.ReduceLROnPlateau,
+                        ):
+                            val_loss_val = self.evaluator.state.metrics.get(
+                                "val_loss", 0.0
+                            )
+                            if isinstance(val_loss_val, torch.Tensor):
+                                val_loss_val = val_loss_val.item()
+                            self.lr_scheduler.step(val_loss_val)
+                        else:
+                            self.lr_scheduler.step()
 
-                val_metrics = self.evaluator.state.metrics
-                print(
-                    f"[Epoch {current_epoch}] Validation Metrics Result: {val_metrics}"
-                )
+                    val_metrics = self.eval()
+                    print(f"[Epoch {current_epoch}] Validation Complete")
 
-                for metric_name, metric_value in val_metrics.items():
-                    if isinstance(metric_value, torch.Tensor):
-                        metric_value = metric_value.item()
-                    self.writer.add_scalar(metric_name, metric_value, current_iteration)
-                self.writer.flush()
+                    for metric_name, metric_value in val_metrics.items():
+                        if isinstance(metric_value, torch.Tensor):
+                            metric_value = metric_value.item()
+                        self.writer.add_scalar(
+                            metric_name, metric_value, current_iteration
+                        )
+                    self.writer.flush()
 
-                current_score = val_metrics.get(
-                    "val_psnr", val_metrics.get("val_loss", 0.0)
-                )
-                if isinstance(current_score, torch.Tensor):
-                    current_score = current_score.item()
+                    # 얼리스타핑 및 베스트 모델 갱신 기준
+                    current_score = val_metrics.get(
+                        "val_psnr", val_metrics.get("val_loss", 0.0)
+                    )
+                    if isinstance(current_score, torch.Tensor):
+                        current_score = current_score.item()
 
-                is_better = (
-                    (current_score < self.best_score - self.min_delta)
-                    if self.mode == "min"
-                    else (current_score > self.best_score + self.min_delta)
-                )
-
-                if is_better:
-                    self.best_score = current_score
-                    self.patience_counter = 0
-                    self._save_best_model(current_epoch)
-                else:
-                    self.patience_counter += 1
-                    print(
-                        f"[-] Validation score did not improve. Patience: {self.patience_counter}/{self.patience}"
+                    is_better = (
+                        (current_score < self.best_score - self.min_delta)
+                        if self.mode == "min"
+                        else (current_score > self.best_score + self.min_delta)
                     )
 
-                if self.patience_counter >= self.patience:
-                    print(f"[!] Early stopping triggered at epoch {current_epoch}!")
-                    engine.terminate()
+                    if is_better:
+                        self.best_score = current_score
+                        self.patience_counter = 0
+                        self._save_best_model(current_epoch)
+                    else:
+                        self.patience_counter += 1
+                        print(
+                            f"[-] Validation score did not improve. Patience: {self.patience_counter}/{self.patience}"
+                        )
+
+                    # 조기 종료 체크
+                    if self.patience_counter >= self.patience:
+                        print(f"[!] Early stopping triggered at epoch {current_epoch}!")
+                        engine.terminate()
 
         self._setup_tqdm_bars()
 
@@ -270,6 +292,8 @@ class Trainer:
         self.trainer.run()
         print("[*] Training finished!")
 
+        self._load_and_test()
+
     def train(self):
         self.fit()
 
@@ -277,6 +301,84 @@ class Trainer:
         if self.evaluator is None:
             raise ValueError("Validation DataLoader is not provided.")
         print("[*] Evaluation started...")
+
         self.evaluator.run()
+
+        val_metrics = self.evaluator.state.metrics
+        print(f"Current Validation Metrics Result: {val_metrics}")
+
         print("[*] Evaluation finished!")
         return self.evaluator.state.metrics
+
+    def _load_and_test(self):
+        """최고 성능 가중치를 로드하여 test_loader 데이터로 평가를 진행하고 텐서보드에 로깅합니다."""
+        if self.test_loader is None:
+            print("[*] test_loader is not provided. Skipping test evaluation.")
+            return
+
+        if not os.path.exists(self.best_model_path):
+            print(
+                f"[-] Best model checkpoint not found at {self.best_model_path}. Skipping test."
+            )
+            return
+
+        print(
+            f"\n[*] Loading best model weights from {self.best_model_path} for testing..."
+        )
+        checkpoint = torch.load(self.best_model_path, map_location=self.device)
+        self.network.load_state_dict(checkpoint["model_state_dict"])
+        self.network.eval()
+
+        # 테스트용 메트릭 설정
+        test_metrics_dict = {
+            "test_loss": Loss(
+                loss_fn=self.loss_function,
+                output_transform=from_engine(["pred", "label"]),
+            ),
+            "test_psnr": PSNRMetric(
+                max_val=1.0,
+                output_transform=from_engine(["pred", "label"]),
+            ),
+            "test_ssim": SSIMMetric(
+                spatial_dims=2,
+                data_range=1.0,
+                output_transform=from_engine(["pred", "label"]),
+            ),
+        }
+
+        def custom_prepare_batch(batchdata, device, non_blocking):
+            if isinstance(batchdata, list):
+                batchdata = batchdata[0]
+            low_res = batchdata.get("quarter", batchdata.get("low_res"))
+            high_res = batchdata.get("full", batchdata.get("full"))
+            if low_res is None or high_res is None:
+                raise KeyError(
+                    f"Batch keys not found. Available keys: {list(batchdata.keys())}"
+                )
+            return (
+                low_res.to(device=device, non_blocking=non_blocking),
+                high_res.to(device=device, non_blocking=non_blocking),
+            )
+
+        test_evaluator = SupervisedEvaluator(
+            device=self.device,
+            val_data_loader=self.test_loader,
+            network=self.network,
+            val_handlers=[],
+            key_val_metric=test_metrics_dict,
+            prepare_batch=custom_prepare_batch,
+            amp=True,
+        )
+
+        print("[*] Test evaluation started...")
+        test_evaluator.run()
+        test_metrics = test_evaluator.state.metrics
+        print(f"[*] Test Metrics Result: {test_metrics}")
+
+        for metric_name, metric_value in test_metrics.items():
+            if isinstance(metric_value, torch.Tensor):
+                metric_value = metric_value.item()
+            self.writer.add_scalar(f"{metric_name}", metric_value, self.iteration)
+
+        self.writer.flush()
+        print("[*] Test metrics successfully logged to TensorBoard!")

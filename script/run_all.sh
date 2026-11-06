@@ -6,8 +6,6 @@ seeds=(42)
 augs=(
   "none"
   "RandAffined"
-  "RandScaleIntensityd"
-  "RandGaussianNoised"
   "Affine_Noise_Combo"
   "Rot90_Scale_Combo"
 )
@@ -30,9 +28,9 @@ for seed in "${seeds[@]}"; do
           "python -m src.main \
                     --model '$model' \
                     --epochs 500 \
-                    --lr 1e-4 \
-                    --grad_norm 0.01 \
-                    --patience 10 \
+                    --lr 2e-5 \
+                    --grad_norm 0.1 \
+                    --patience 1 \
                     --seed '$seed'"
       else
         docker run --gpus all --rm -d --ipc=host \
@@ -43,10 +41,10 @@ for seed in "${seeds[@]}"; do
           "python -m src.main \
                     --model '$model' \
                     --epochs 500 \
-                    --lr 1e-4 \
-                    --grad_norm 0.01 \
+                    --lr 2e-5 \
+                    --grad_norm 0.1 \
                     --augment '$aug' \
-                    --patience 10 \
+                    --patience 1 \
                     --seed '$seed'"
       fi
 
