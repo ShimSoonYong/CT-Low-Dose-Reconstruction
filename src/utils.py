@@ -31,7 +31,7 @@ def _init_registry():
             },
         },
         "RandRot90d": {
-            "cls": getattr(transforms_module, "RandRot90d", None),
+            "cls": getattr(transforms_module, "RandRotate90d", None),
             "kwargs": {"keys": ["quarter", "full"], "prob": 0.5, "max_k": 3},
         },
         "RandFlipd_0": {
@@ -53,9 +53,9 @@ def _init_registry():
         "RandGaussianNoised": {
             "cls": getattr(transforms_module, "RandGaussianNoised", None),
             "kwargs": {
-                "keys": ["quarter", "full"],
+                "keys": ["quarter"],
                 "mean": 0.0,
-                "std": 0.05,
+                "std": 0.02,
                 "prob": 0.3,
             },
         },
@@ -68,7 +68,24 @@ def _init_registry():
                 "prob": 0.3,
             },
         },
-        # 복합 증강들 등록
+        # 보간 블러 및 HU 왜곡이 전혀 없는 초고속 무손실 직교 대칭(D4 Dihedral) 복합 증강
+        "Rot90_Flip_Combo": {
+            "composite": [
+                (
+                    "RandRotate90d",
+                    {"keys": ["quarter", "full"], "prob": 0.5, "max_k": 3},
+                ),
+                (
+                    "RandFlipd",
+                    {"keys": ["quarter", "full"], "prob": 0.5, "spatial_axis": 0},
+                ),
+                (
+                    "RandFlipd",
+                    {"keys": ["quarter", "full"], "prob": 0.5, "spatial_axis": 1},
+                ),
+            ]
+        },
+        # 복합 증강들 등록 (하위 호환 유지; 노이즈는 입력 quarter에만 인가)
         "Affine_Noise_Combo": {
             "composite": [
                 (
@@ -83,9 +100,9 @@ def _init_registry():
                 (
                     "RandGaussianNoised",
                     {
-                        "keys": ["quarter", "full"],
+                        "keys": ["quarter"],
                         "mean": 0.0,
-                        "std": 0.05,
+                        "std": 0.02,
                         "prob": 0.3,
                     },
                 ),
@@ -93,7 +110,10 @@ def _init_registry():
         },
         "Rot90_Scale_Combo": {
             "composite": [
-                ("RandRot90d", {"keys": ["quarter", "full"], "prob": 0.5, "max_k": 3}),
+                (
+                    "RandRotate90d",
+                    {"keys": ["quarter", "full"], "prob": 0.5, "max_k": 3},
+                ),
                 (
                     "RandScaleIntensityd",
                     {"keys": ["quarter", "full"], "factors": 0.1, "prob": 0.5},
@@ -146,7 +166,7 @@ def get_augs(augments: List[str]) -> List[Transform]:
 
         if aug_name not in TRANSFORM_REGISTRY:
             raise AttributeError(
-                f"지원하지 않거나 등록되지 않은 Transform 이름입니다: {aug_name}"
+                f"monai.transforms에 지원하지 않거나 등록되지 않은 Transform 이름입니다: {aug_name}"
             )
 
         reg_item = TRANSFORM_REGISTRY[aug_name]

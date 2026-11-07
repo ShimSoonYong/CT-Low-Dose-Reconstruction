@@ -1,0 +1,13 @@
+\begin{tabular}{llccccccc}
+\toprule
+\textbf{Model} & \textbf{Augmentation} & \textbf{Ckpt} & \textbf{PSNR (dB) $\uparrow$} & \textbf{SSIM $\uparrow$} & \textbf{RMSE (HU) $\downarrow$} & \textbf{MAE (HU) $\downarrow$} & \textbf{EPI $\uparrow$} & \textbf{L192 / L506 (dB)} \\
+\midrule
+Quarter-Dose Input (Baseline) & --- & --- & 21.75$\pm$1.81 & 0.7160$\pm$0.0521 & 33.45 & 15.48 & 0.8542 & 21.38 / 22.16 \\
+\midrule
+\texttt{U\_Net} & \texttt{none} & Ep.130 & \textbf{27.17$\pm$1.56} & \textbf{0.8344$\pm$0.0365} & \textbf{17.80} & \textbf{8.35} & 0.9363 & 26.93 / 27.44 \\
+\texttt{U\_Net} & \texttt{RandAffined} & Ep.8$^\dagger$ & 25.60$\pm$1.33 & 0.7276$\pm$0.0447 & 21.26 & 9.96 & 0.9059 & 25.50 / 25.71 \\
+\texttt{U\_Net} & \texttt{Affine\_Noise\_Combo} & NaN (Step 374)$^\ddagger$ & \multicolumn{6}{c}{\textit{Diverged in Epoch 1 under FP16 AMP + Out-of-Range Augmentation (See Sec.~6)}} \\
+\texttt{U\_Net} & \texttt{Rot90\_Scale\_Combo} & NaN (Step 224)$^\ddagger$ & \multicolumn{6}{c}{\textit{Diverged in Epoch 1 under FP16 AMP + Out-of-Range Augmentation (See Sec.~6)}} \\
+\texttt{R2U\_Net} & \texttt{none} & Ep.10$^\star$ & 21.05$\pm$1.36 & 0.4112$\pm$0.0139 & 35.90 & 20.63 & 0.8602 & 20.66 / 21.47 \\
+\bottomrule
+\end{tabular}

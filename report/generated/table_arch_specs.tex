@@ -1,0 +1,12 @@
+\begin{tabular}{lccccccc}
+\toprule
+\textbf{Architecture} & \textbf{Block Res.} & \textbf{Global $+x$} & \textbf{Recurrent ($t{=}2$)} & \textbf{Att. Gate} & \textbf{Nested Skip} & \textbf{Params} & \textbf{GFLOPs ($512^2$)} \\
+\midrule
+\texttt{U\_Net} (U-Net (Global +x)) & --- & \checkmark & --- & --- & --- & 34.53 M & 522.2 \\
+\texttt{U\_Net\_NoRes} (U-Net (No Global +x)) & --- & --- & --- & --- & --- & 34.53 M & 522.2 \\
+\texttt{R2U\_Net} (R2U-Net) & \checkmark & \checkmark & \checkmark & --- & --- & 39.09 M & 1219.8 \\
+\texttt{AttU\_Net} (Attention U-Net) & --- & \checkmark & --- & \checkmark & --- & 34.88 M & 530.8 \\
+\texttt{R2AttU\_Net} (R2Attention U-Net) & \checkmark & \checkmark & \checkmark & \checkmark & --- & 39.44 M & 1228.5 \\
+\texttt{NestedUNet} (UNet++ (Nested U-Net)) & --- & \checkmark & --- & --- & \checkmark & 36.63 M & 1102.0 \\
+\bottomrule
+\end{tabular}

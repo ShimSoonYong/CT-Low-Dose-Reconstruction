@@ -1,23 +1,60 @@
 #!/bin/bash
 
-models=("U_Net" "R2U_Net" "R2AttU_Net" "AttU_Net" "NestedUNet")
+# 빠른 모델 및 필수 비교군(NoRes -> U_Net -> AttU_Net -> NestedUNet -> R2 계열) 순으로 배치하여
+# 제한 시간 내에 최대 개수의 아키텍처 × 증강 그리드 포인트를 안전하게 완주합니다.
+models=("U_Net_NoRes" "U_Net" "AttU_Net" "NestedUNet" "R2U_Net" "R2AttU_Net")
 seeds=(42)
 
+# 실패/발산 및 CPU 병목을 유발하던 무거운 보간·강도변형 증강을 제거하고,
+# HU 정량성과 Sharp 커널 고주파 질감을 100% 보존하는 초고속 무손실 D4 대칭 증강만 사용합니다.
 augs=(
   "none"
-  "RandAffined"
-  "Affine_Noise_Combo"
-  "Rot90_Scale_Combo"
+  "Rot90_Flip_Combo"
 )
+
+MAX_EPOCHS="${MAX_EPOCHS:-100}"
+SKIP_COMPLETED="${SKIP_COMPLETED:-1}"
+
+has_valid_best_ckpt() {
+  local ckpt_path="$1"
+  if [ ! -f "$ckpt_path" ]; then
+    return 1
+  fi
+  if [ -x ".venv/bin/python" ]; then
+    CUDA_VISIBLE_DEVICES="" .venv/bin/python - "$ckpt_path" <<'PY' >/dev/null 2>&1
+import sys, torch
+ckpt = torch.load(sys.argv[1], map_location="cpu", weights_only=False)
+sd = ckpt.get("model_state_dict", ckpt)
+ok = bool(sd) and all(torch.isfinite(t).all().item() for t in sd.values() if isinstance(t, torch.Tensor) and t.is_floating_point())
+bs = ckpt.get("best_score", None)
+if bs is not None and bs <= 0:
+    ok = False
+sys.exit(0 if ok else 1)
+PY
+    return $?
+  fi
+  return 0
+}
 
 # Grid Search 반복문 실행
 for seed in "${seeds[@]}"; do
   for model in "${models[@]}"; do
     for aug in "${augs[@]}"; do
 
+      # U_Net_NoRes는 Global Residual 제거 효과를 대조하기 위한 전용 Ablation 베이스라인이므로 none만 수행
+      if [ "$model" == "U_Net_NoRes" ] && [ "$aug" != "none" ]; then
+        continue
+      fi
+
+      run_dir="log/${model}_${aug}"
+      if [ "$SKIP_COMPLETED" == "1" ] && has_valid_best_ckpt "${run_dir}/best_model.pth"; then
+        echo "[=] Skipping already converged run: ${run_dir} (set SKIP_COMPLETED=0 to force rerun)"
+        continue
+      fi
+
       docker container rm -f "$model" 2>/dev/null
 
-      echo "[*] Running Model: $model | Seed: $seed | Aug: $aug"
+      echo "[*] Running Model: $model | Seed: $seed | Aug: $aug | MaxEpochs: $MAX_EPOCHS"
 
       if [ "$aug" == "none" ]; then
         docker run --gpus all --rm -d --ipc=host \
@@ -27,10 +64,10 @@ for seed in "${seeds[@]}"; do
           bash -c \
           "python -m src.main \
                     --model '$model' \
-                    --epochs 500 \
+                    --epochs '$MAX_EPOCHS' \
                     --lr 2e-5 \
-                    --grad_norm 0.1 \
-                    --patience 1 \
+                    --grad_norm 1.0 \
+                    --patience 2 \
                     --seed '$seed'"
       else
         docker run --gpus all --rm -d --ipc=host \
@@ -40,11 +77,11 @@ for seed in "${seeds[@]}"; do
           bash -c \
           "python -m src.main \
                     --model '$model' \
-                    --epochs 500 \
+                    --epochs '$MAX_EPOCHS' \
                     --lr 2e-5 \
-                    --grad_norm 0.1 \
+                    --grad_norm 1.0 \
                     --augment '$aug' \
-                    --patience 1 \
+                    --patience 2 \
                     --seed '$seed'"
       fi
 

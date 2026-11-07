@@ -7,7 +7,7 @@ from .trainer import Trainer
 from .loss import PSNR, SSIM, SSIMLoss
 from .data import data_load, get_loader
 from .utils import get_args, seed_everything, get_augs
-from .UNet import U_Net, R2U_Net, R2AttU_Net, AttU_Net, NestedUNet
+from .UNet import U_Net, R2U_Net, R2AttU_Net, AttU_Net, NestedUNet, U_Net_NoRes
 
 
 def main(args):
@@ -61,6 +61,8 @@ def main(args):
 
     if model_name == "U_Net":
         network = U_Net(in_ch=in_channels, out_ch=out_channels)
+    elif model_name == "U_Net_NoRes":
+        network = U_Net_NoRes(in_ch=in_channels, out_ch=out_channels)
     elif model_name == "R2U_Net":
         network = R2U_Net(img_ch=in_channels, output_ch=out_channels)
     elif model_name == "AttU_Net":
@@ -80,17 +82,22 @@ def main(args):
     lr = getattr(args, "lr", 1e-4)
     optimizer = optim.AdamW(network.parameters(), lr=lr)
     scheduler = optim.lr_scheduler.CosineAnnealingLR(
-        optimizer=optimizer, T_max=max_epochs, eta_min=1e-6
+        optimizer=optimizer, T_max=max(1, max_epochs // 10), eta_min=1e-6
     )
-    loss_function = lambda x, y: (
-        nn.L1Loss()(x, y) + 0.1 * SSIMLoss(spatial_dims=2, data_range=1.0)(x, y)
-    )
+    l1_criterion = nn.L1Loss()
+    ssim_criterion = SSIMLoss(spatial_dims=2, data_range=1.0)
 
-    # 8. 검증 평가지표(Metric) 설정
-    key_val_metric = {
-        "val_psnr": PSNR(max_val=1, device=args.device),
-        "val_ssim": SSIM(spatial_dims=2, max_val=1, device=args.device),
-    }
+    def loss_function(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        # AMP autocast 내부에서도 F.conv2d가 FP16으로 다운캐스팅되어 SSIM 분산 계산 시
+        # 0/0 NaN이 발생하는 것을 방지하기 위해 손실 계산은 명시적으로 FP32에서 수행
+        with torch.amp.autocast(device_type=device.type, enabled=False):
+            x_fp32 = x.float()
+            y_fp32 = y.float()
+            return l1_criterion(x_fp32, y_fp32) + 0.1 * ssim_criterion(
+                x_fp32.clamp(-1.0, 2.0), y_fp32
+            )
+
+    # 8. 검증 평가지표(Metric)는 Trainer 내부에서 자동 생성
 
     # 9. Trainer 초기화 및 학습(fit) 실행
     log_dir = Path(getattr(args, "log_dir", "./log")) / Path(
@@ -109,7 +116,6 @@ def main(args):
         max_epochs=max_epochs,
         device=str(device),
         log_dir=log_dir,
-        key_val_metric=key_val_metric,
         patience=patience,
         max_grad_norm=args.grad_norm,
         mode="max",
