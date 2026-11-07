@@ -1,6 +1,2 @@
 [*] Running Model: U_Net_NoRes | Seed: 42 | Aug: none | MaxEpochs: 100
-25df5e4679dd473cbde3d0b4076dce4d41eaf30c5c6b1a75b06ac1e8efd25e9c
-1
-[=] Skipping already converged run: log/U_Net_none (set SKIP_COMPLETED=0 to force rerun)
-[*] Running Model: U_Net | Seed: 42 | Aug: Rot90_Flip_Combo | MaxEpochs: 100
-21548b309ce07a347b160f8409b5dbdc14d336e5cfb18d1c303d91fe5561c57f
+b35cee16067eff3eabf8351cfba7780eef19625c3186b0af773e5088cad11c88

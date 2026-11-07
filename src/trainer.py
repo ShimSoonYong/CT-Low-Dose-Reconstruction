@@ -78,7 +78,7 @@ class Trainer:
             ),
             TensorBoardImageHandler(
                 batch_transform=self._custom_batch_transform,
-                output_transform=from_engine(["pred"]),
+                output_transform=self._custom_image_output_transform,
                 max_channels=1,
                 max_frames=4,
                 epoch_level=True,
@@ -291,7 +291,23 @@ class Trainer:
             batch = batch[0]
         low_res = batch.get("quarter", batch.get("low_res"))
         high_res = batch.get("full", batch.get("high_res"))
+        if isinstance(low_res, torch.Tensor):
+            low_res = low_res.detach().float()
+        if isinstance(high_res, torch.Tensor):
+            high_res = high_res.detach().float()
         return low_res, high_res
+
+    @staticmethod
+    def _custom_image_output_transform(output):
+        preds = from_engine(["pred"])(output)
+        if isinstance(preds, list):
+            return [
+                p.detach().float().clamp(0.0, 1.0) if isinstance(p, torch.Tensor) else p
+                for p in preds
+            ]
+        if isinstance(preds, torch.Tensor):
+            return preds.detach().float().clamp(0.0, 1.0)
+        return preds
 
     def _ensure_ignite_metric(self, metric_obj: Any) -> Any:
         """MONAI 메트릭이 전달되었을 때 .attach() 메서드가 없다면 IgniteMetricHandler로 감싸줍니다."""
