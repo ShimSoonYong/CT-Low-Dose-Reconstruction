@@ -268,18 +268,18 @@ def plot_residual_comparison(cache: Dict[str, Any], npz: Any) -> None:
     f_hu = norm_to_hu(npz["full"][pick_idx])
     ry, rx = find_high_detail_roi(npz["full"][pick_idx], npz["quarter"][pick_idx], box_size=128)
 
-    # Gather available baseline ("none" aug) models in priority order + recovered RandAffined if <3 models
+    # Gather available baseline ("none" aug) models prioritizing U_Net (+x) vs U_Net_NoRes vs AttU_Net vs NestedUNet / R2U_Net
     eval_runs = cache["evaluated_runs"]
     candidates = []
-    for m in ["U_Net", "U_Net_NoRes", "R2U_Net", "AttU_Net", "R2AttU_Net", "NestedUNet"]:
+    for m in ["U_Net", "U_Net_NoRes", "AttU_Net", "NestedUNet", "R2U_Net", "R2AttU_Net"]:
         rn = f"{m}_none"
         if rn in eval_runs and f"pred__{rn}" in npz:
             candidates.append(rn)
-    if len(candidates) < 3 and "U_Net_RandAffined" in eval_runs and "pred__U_Net_RandAffined" in npz:
+    if len(candidates) < 4 and "U_Net_RandAffined" in eval_runs and "pred__U_Net_RandAffined" in npz:
         candidates.append("U_Net_RandAffined")
 
     cols = [("Quarter Dose\n(Noisy Input)", q_hu, cache["baseline"]["per_slice"])]
-    for rn in candidates[:3]:
+    for rn in candidates[:4]:
         meta = cache["runs_metadata"][rn]
         lbl = display_run_label(rn, eval_runs[rn], meta)
         cols.append((lbl, norm_to_hu(npz[f"pred__{rn}"][pick_idx]), eval_runs[rn]["per_slice"]))
@@ -346,7 +346,7 @@ def plot_residual_comparison(cache: Dict[str, Any], npz: Any) -> None:
     ax_prof.plot(x_pix, gt_line, color="#0F172A", lw=2.2, label="Full Dose (Ground Truth)")
 
     palette = ["#2563EB", "#DC2626", "#16A34A", "#9333EA"]
-    for pi, rn in enumerate(candidates[:3]):
+    for pi, rn in enumerate(candidates[:4]):
         meta = cache["runs_metadata"][rn]
         lbl = display_run_label(rn, eval_runs[rn], meta)
         pr_line = norm_to_hu(npz[f"pred__{rn}"][pick_idx])[ry + scan_row, rx : rx + 128]
@@ -384,16 +384,19 @@ def plot_training_and_nan_diagnostics(cache: Dict[str, Any]) -> None:
 
     colors = {
         "U_Net_none": "#2563EB",
+        "U_Net_NoRes_none": "#DC2626",
+        "U_Net_Rot90_Flip_Combo": "#0284C7",
         "U_Net_RandAffined": "#F59E0B",
         "U_Net_Affine_Noise_Combo": "#EF4444",
         "U_Net_Rot90_Scale_Combo": "#EC4899",
         "R2U_Net_none": "#10B981",
         "AttU_Net_none": "#8B5CF6",
+        "AttU_Net_Rot90_Flip_Combo": "#16A34A",
         "R2AttU_Net_none": "#06B6D4",
         "NestedUNet_none": "#F97316",
     }
 
-    steps_per_epoch = max(1, cache["dataset_info"]["train_slices"] // 4)
+    base_steps_per_epoch = max(1, cache["dataset_info"]["train_slices"] // 4)
 
     # Panel A: Early-to-mid training loss (first 15 epochs / ~6000 steps inset + full trajectory)
     for rn, meta in sorted(runs_meta.items()):
@@ -401,7 +404,12 @@ def plot_training_and_nan_diagnostics(cache: Dict[str, Any]) -> None:
         tl = tb.get("scalars", {}).get("train_loss", {})
         steps = tl.get("steps", [])
         vals = tl.get("values", [])
-        finite = [(s / steps_per_epoch, v) for s, v in zip(steps, vals) if v is not None]
+        steps_per_ep = (
+            max(1, cache["dataset_info"]["train_slices"])
+            if rn.startswith("NestedUNet")
+            else base_steps_per_epoch
+        )
+        finite = [(s / steps_per_ep, v) for s, v in zip(steps, vals) if v is not None]
         if not finite:
             continue
         xs, ys = zip(*finite)
@@ -411,7 +419,7 @@ def plot_training_and_nan_diagnostics(cache: Dict[str, Any]) -> None:
         ax_loss.plot(xs, ys, lw=1.5, alpha=0.88, color=c, label=lbl)
 
         if tb.get("first_nan_step") is not None:
-            nan_ep = tb["first_nan_step"] / steps_per_epoch
+            nan_ep = tb["first_nan_step"] / steps_per_ep
             ax_loss.scatter(
                 [xs[-1]],
                 [ys[-1]],
@@ -502,44 +510,48 @@ def plot_training_and_nan_diagnostics(cache: Dict[str, Any]) -> None:
 def plot_augmentation_pitfalls(npz: Any) -> None:
     """Demonstrate mathematically & visually why paired intensity/noise augmentations degraded CT restoration."""
     import torch
-    from src.utils import seed_everything, get_augs
+    from monai.transforms import RandAffined, RandGaussianNoised, RandRotate90d, RandScaleIntensityd
 
     q_orig = torch.tensor(npz["quarter"][0:1], dtype=torch.float32)  # [1, 512, 512]
     f_orig = torch.tensor(npz["full"][0:1], dtype=torch.float32)
 
     aug_configs = [
-        ("none", "Baseline (none)\nExact [0, 1] Clean Target"),
-        ("RandAffined", "RandAffined\nBilinear Smoothing of Sharp Noise"),
-        ("Affine_Noise_Combo", "Affine_Noise_Combo\nTarget Corrupted + Out-of-[0,1]"),
-        ("Rot90_Scale_Combo", "Rot90_Scale_Combo\nIntensity > 1.0 vs. clamp(0,1)"),
+        ("none", "Baseline / Rot90_Flip_Combo\nExact [0, 1] Clean Target", []),
+        (
+            "RandAffined",
+            "RandAffined\nBilinear Smoothing of Sharp Noise",
+            [RandAffined(keys=["quarter", "full"], rotate_range=(0.15, 0.15), prob=1.0, mode="bilinear", padding_mode="reflection")],
+        ),
+        (
+            "Affine_Noise_Combo",
+            "Affine_Noise_Combo (Pre-Fix)\nTarget Corrupted + Out-of-[0,1]",
+            [
+                RandAffined(keys=["quarter", "full"], rotate_range=(0.12, 0.12), prob=1.0, mode="bilinear"),
+                RandGaussianNoised(keys=["quarter", "full"], mean=0.0, std=0.05, prob=1.0),
+            ],
+        ),
+        (
+            "Rot90_Scale_Combo",
+            "Rot90_Scale_Combo\nIntensity > 1.0 vs. clamp(0,1)",
+            [
+                RandRotate90d(keys=["quarter", "full"], prob=1.0, max_k=1),
+                RandScaleIntensityd(keys=["quarter", "full"], factors=(0.10, 0.10), prob=1.0),
+            ],
+        ),
     ]
 
     samples = []
-    for key, title in aug_configs:
-        if key == "none":
+    for key, title, tfms in aug_configs:
+        if not tfms:
             samples.append((key, title, q_orig[0].numpy(), f_orig[0].numpy()))
         else:
-            # Find seed draw where prob triggers all transforms clearly
-            for sd in range(1, 50):
-                seed_everything(sd)
-                tfms = get_augs([key])
-                d = {"quarter": q_orig.clone(), "full": f_orig.clone()}
-                for t in tfms:
-                    t.set_random_state(seed=sd)
-                    d = t(d)
-                qn = np.asarray(d["quarter"][0], dtype=np.float32)
-                fn = np.asarray(d["full"][0], dtype=np.float32)
-                if key == "Affine_Noise_Combo" and (fn.max() > 1.01 or fn.min() < -0.01):
-                    samples.append((key, title, qn, fn))
-                    break
-                if key == "Rot90_Scale_Combo" and fn.max() > 1.03:
-                    samples.append((key, title, qn, fn))
-                    break
-                if key == "RandAffined" and not np.allclose(fn, f_orig[0].numpy()):
-                    samples.append((key, title, qn, fn))
-                    break
-            else:
-                samples.append((key, title, qn, fn))
+            d = {"quarter": q_orig.clone(), "full": f_orig.clone()}
+            for t in tfms:
+                t.set_random_state(seed=42)
+                d = t(d)
+            qn = np.asarray(d["quarter"][0], dtype=np.float32)
+            fn = np.asarray(d["full"][0], dtype=np.float32)
+            samples.append((key, title, qn, fn))
 
     fig = plt.figure(figsize=(14.5, 6.2))
     gs = fig.add_gridspec(2, 4, height_ratios=[1.15, 0.9], wspace=0.22, hspace=0.36, left=0.05, right=0.98, top=0.89, bottom=0.10)
@@ -608,7 +620,7 @@ def plot_quantitative_distributions(cache: Dict[str, Any]) -> None:
         lbl = display_run_label(rn, eval_runs[rn], runs_meta[rn]).replace(" (", "\n(")
         entries.append((lbl, eval_runs[rn]))
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.8, 5.0))
+    fig, axes = plt.subplots(1, 2, figsize=(15.4, 5.4))
     ax1, ax2 = axes
 
     x = np.arange(len(entries))
@@ -627,7 +639,7 @@ def plot_quantitative_distributions(cache: Dict[str, Any]) -> None:
             means,
             width=w,
             yerr=stds,
-            capsize=3,
+            capsize=2.5,
             color=col,
             alpha=0.9,
             label=glbl,
@@ -640,21 +652,21 @@ def plot_quantitative_distributions(cache: Dict[str, Any]) -> None:
                     f"{m:.2f}",
                     ha="center",
                     va="bottom",
-                    fontsize=7.8,
+                    fontsize=7.0,
                     fontweight="bold",
                 )
 
     ax1.set_xticks(x)
-    ax1.set_xticklabels([e[0] for e in entries], fontsize=8.2)
+    ax1.set_xticklabels([e[0].replace("\n", " ") for e in entries], fontsize=7.6, rotation=22, ha="right")
     ax1.set_ylabel("Test PSNR [dB] (Mean ± Std)", fontsize=10)
     ax1.set_ylim(18.0, max(32.5, max(e[1]["summary"]["overall"]["psnr_mean"] for e in entries) + 3.5))
     ax1.set_title("(a) Cross-Patient Test PSNR Comparison (L192 vs. L506)", fontsize=10.5, fontweight="bold")
     ax1.grid(True, axis="y", linestyle=":", alpha=0.5)
-    ax1.legend(fontsize=8.5, loc="upper left")
+    ax1.legend(fontsize=8.2, loc="upper left")
 
     # Panel B: Violin/Box distribution of slice-wise RMSE (HU) & Edge Preservation annotation
     data_rmse = [[r["rmse_hu"] for r in e[1]["per_slice"]] for e in entries]
-    parts = ax2.violinplot(data_rmse, positions=x, showmeans=True, showmedians=True, widths=0.6)
+    parts = ax2.violinplot(data_rmse, positions=x, showmeans=True, showmedians=True, widths=0.58)
     for pc in parts["bodies"]:
         pc.set_facecolor("#3B82F6")
         pc.set_edgecolor("#1E3A8A")
@@ -662,20 +674,21 @@ def plot_quantitative_distributions(cache: Dict[str, Any]) -> None:
 
     for xi, (_, entry) in enumerate(entries):
         ov = entry["summary"]["overall"]
+        y_off = 0.8 + (2.6 if (xi % 2 == 1 and xi >= 3) else 0.0)
         ax2.text(
             xi,
-            max(data_rmse[xi]) + 0.9,
-            f"RMSE {ov['rmse_hu_mean']:.1f} HU\nSSIM {ov['ssim_mean']:.3f}\nEPI {ov['epi_mean']:.3f}",
+            max(data_rmse[xi]) + y_off,
+            f"{ov['rmse_hu_mean']:.1f}HU\nS:{ov['ssim_mean']:.3f}",
             ha="center",
             va="bottom",
-            fontsize=7.6,
-            bbox=dict(boxstyle="round,pad=0.2", facecolor="#F8FAFC", edgecolor="#CBD5E1", alpha=0.9),
+            fontsize=6.8,
+            bbox=dict(boxstyle="round,pad=0.16", facecolor="#F8FAFC", edgecolor="#CBD5E1", alpha=0.9),
         )
 
     ax2.set_xticks(x)
-    ax2.set_xticklabels([e[0] for e in entries], fontsize=8.2)
+    ax2.set_xticklabels([e[0].replace("\n", " ") for e in entries], fontsize=7.6, rotation=22, ha="right")
     ax2.set_ylabel("Slice-wise RMSE in [-100, 300] Window [HU] (Lower is Better)", fontsize=10)
-    ax2.set_ylim(0.0, max(max(d) for d in data_rmse) + 8.5)
+    ax2.set_ylim(0.0, max(max(d) for d in data_rmse) + 10.5)
     ax2.set_title("(b) Slice-wise HU Error Distribution, SSIM & Edge Preservation (EPI)", fontsize=10.5, fontweight="bold")
     ax2.grid(True, axis="y", linestyle=":", alpha=0.5)
 
@@ -769,8 +782,8 @@ def write_latex_tables_and_macros(cache: Dict[str, Any], best_run_name: str) -> 
 
     # Order runs cleanly by model order then aug order
     ordered_run_names = []
-    for m in ["U_Net", "U_Net_NoRes", "R2U_Net", "R2AttU_Net", "AttU_Net", "NestedUNet"]:
-        for a in ["none", "RandAffined", "Affine_Noise_Combo", "Rot90_Scale_Combo"]:
+    for m in ["U_Net", "U_Net_NoRes", "AttU_Net", "NestedUNet", "R2U_Net", "R2AttU_Net"]:
+        for a in ["none", "Rot90_Flip_Combo", "RandAffined", "Affine_Noise_Combo", "Rot90_Scale_Combo"]:
             rn = f"{m}_{a}"
             if rn in runs_meta:
                 ordered_run_names.append(rn)
@@ -832,6 +845,12 @@ def write_latex_tables_and_macros(cache: Dict[str, Any], best_run_name: str) -> 
 
     # 4. Dynamic LaTeX Macros so inline numbers stay auto-synced on every refresh
     unet_ov = eval_runs.get("U_Net_none", {}).get("summary", {}).get("overall", best_ov)
+    nores_ov = eval_runs.get("U_Net_NoRes_none", {}).get("summary", {}).get("overall", unet_ov)
+    unet_rf_ov = eval_runs.get("U_Net_Rot90_Flip_Combo", {}).get("summary", {}).get("overall", unet_ov)
+    att_ov = eval_runs.get("AttU_Net_none", {}).get("summary", {}).get("overall", unet_ov)
+    att_rf_ov = eval_runs.get("AttU_Net_Rot90_Flip_Combo", {}).get("summary", {}).get("overall", best_ov)
+    nested_ov = eval_runs.get("NestedUNet_none", {}).get("summary", {}).get("overall", None)
+    nested_ep = eval_runs.get("NestedUNet_none", {}).get("selected_epoch", "---")
     r2_ov = eval_runs.get("R2U_Net_none", {}).get("summary", {}).get("overall", None)
     r2_ep = eval_runs.get("R2U_Net_none", {}).get("selected_epoch", "---")
     ra_ov = eval_runs.get("U_Net_RandAffined", {}).get("summary", {}).get("overall", None)
@@ -865,6 +884,21 @@ def write_latex_tables_and_macros(cache: Dict[str, Any], best_run_name: str) -> 
         f"\\newcommand{{\\UNetSSIM}}{{{unet_ov['ssim_mean']:.4f}}}",
         f"\\newcommand{{\\UNetRMSEHU}}{{{unet_ov['rmse_hu_mean']:.2f}}}",
         f"\\newcommand{{\\UNetEPI}}{{{unet_ov['epi_mean']:.4f}}}",
+        f"\\newcommand{{\\UNetNoResPSNR}}{{{nores_ov['psnr_mean']:.2f}}}",
+        f"\\newcommand{{\\UNetNoResSSIM}}{{{nores_ov['ssim_mean']:.4f}}}",
+        f"\\newcommand{{\\UNetNoResRMSEHU}}{{{nores_ov['rmse_hu_mean']:.2f}}}",
+        f"\\newcommand{{\\UNetNoResEPI}}{{{nores_ov['epi_mean']:.4f}}}",
+        f"\\newcommand{{\\UNetRotFlipPSNR}}{{{unet_rf_ov['psnr_mean']:.2f}}}",
+        f"\\newcommand{{\\UNetRotFlipSSIM}}{{{unet_rf_ov['ssim_mean']:.4f}}}",
+        f"\\newcommand{{\\AttUNetPSNR}}{{{att_ov['psnr_mean']:.2f}}}",
+        f"\\newcommand{{\\AttUNetSSIM}}{{{att_ov['ssim_mean']:.4f}}}",
+        f"\\newcommand{{\\AttUNetRotFlipPSNR}}{{{att_rf_ov['psnr_mean']:.2f}}}",
+        f"\\newcommand{{\\AttUNetRotFlipSSIM}}{{{att_rf_ov['ssim_mean']:.4f}}}",
+        f"\\newcommand{{\\NestedUNetPSNR}}{{{nested_ov['psnr_mean']:.2f}}}" if nested_ov else "\\newcommand{\\NestedUNetPSNR}{---}",
+        f"\\newcommand{{\\NestedUNetSSIM}}{{{nested_ov['ssim_mean']:.4f}}}" if nested_ov else "\\newcommand{\\NestedUNetSSIM}{---}",
+        f"\\newcommand{{\\NestedUNetRMSEHU}}{{{nested_ov['rmse_hu_mean']:.2f}}}" if nested_ov else "\\newcommand{\\NestedUNetRMSEHU}{---}",
+        f"\\newcommand{{\\NestedUNetEPI}}{{{nested_ov['epi_mean']:.4f}}}" if nested_ov else "\\newcommand{\\NestedUNetEPI}{---}",
+        f"\\newcommand{{\\NestedUNetEpoch}}{{{nested_ep}}}",
         f"\\newcommand{{\\RTwoUNetPSNR}}{{{r2_ov['psnr_mean']:.2f}}}" if r2_ov else "\\newcommand{\\RTwoUNetPSNR}{---}",
         f"\\newcommand{{\\RTwoUNetSSIM}}{{{r2_ov['ssim_mean']:.4f}}}" if r2_ov else "\\newcommand{\\RTwoUNetSSIM}{---}",
         f"\\newcommand{{\\RTwoUNetRMSEHU}}{{{r2_ov['rmse_hu_mean']:.2f}}}" if r2_ov else "\\newcommand{\\RTwoUNetRMSEHU}{---}",

@@ -8,8 +8,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 PYTHON_BIN="${WORKSPACE_ROOT}/.venv/bin/python"
 
-STUDENT_ID="${STUDENT_ID:-StudentID}"
-AUTHOR_NAME="${AUTHOR_NAME:-Name}"
+STUDENT_ID="${STUDENT_ID:-2026710517}"
+AUTHOR_NAME="${AUTHOR_NAME:-심순용}"
 DEVICE="cpu"
 FORCE_FLAG=""
 
@@ -73,5 +73,6 @@ SAFE_ID="${STUDENT_ID// /_}"
 SAFE_NAME="${AUTHOR_NAME// /_}"
 OUT_PDF="${WORKSPACE_ROOT}/${SAFE_ID}_${SAFE_NAME}_Report.pdf"
 cp "${SCRIPT_DIR}/main.pdf" "${OUT_PDF}"
+cp "${SCRIPT_DIR}/main.pdf" "${WORKSPACE_ROOT}/StudentID_Name_Report.pdf"
 
 echo "[+] Successfully built PDF report: ${OUT_PDF}"

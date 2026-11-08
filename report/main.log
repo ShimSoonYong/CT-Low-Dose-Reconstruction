@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025/Debian) (preloaded format=xelatex 2026.11.1)  7 NOV 2026 23:01
+This is XeTeX, Version 3.141592653-2.6-0.999997 (TeX Live 2025/Debian) (preloaded format=xelatex 2026.11.1)  8 NOV 2026 22:59
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -770,10 +770,15 @@ LaTeX Font Info:    Trying to load font information for U+msb on input line 82.
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 )
-LaTeX Font Info:    Font shape `TU/DejaVuSansMono(0)/b/n' will be
-(Font)              scaled to size 7.74pt on input line 98.
 LaTeX Font Info:    Font shape `TU/DejaVuSansMono(0)/m/n' will be
 (Font)              scaled to size 7.74pt on input line 98.
+
+Underfull \hbox (badness 2368) in paragraph at lines 98--98
+\OMS/cmsy/m/n/9 ^^O$ \TU/UnDotum(0)/b/n/9 정 량 평 가 결 과 및 시 행 착 오 [] 오 류 원 인 고 찰 
+: \TU/UnDotum(0)/m/n/9 테 스 트 셋 (\TU/DejaVuSansMono(0)/m/n/9 L192\TU/UnDotum(0)/
+m/n/9 , \TU/DejaVuSansMono(0)/m/n/9 L506\TU/UnDotum(0)/m/n/9 ) 평 가 결 과, \TU/Dej
+aVuSans(0)/m/n/9 Quarter-Dose \TU/UnDotum(0)/m/n/9 입 력 대 비
+ []
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
@@ -796,13 +801,6 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `math shift' on input line 122.
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 123--124
-\TU/UnBatang(0)/m/n/10 뒤, \TU/DejaVuSansMono(0)/m/n/10 ScaleIntensityRanged(a_m
-in=-100.0, a_max=300.0, b_min=0.0, b_max=1.0, clip=True) \TU/UnBatang(0)/m/n/10
- 를 적 용 하 여
- []
 
 [1
 
@@ -844,38 +842,22 @@ File: figures/code/code_06_trainer_engine.png Graphic file (type bmp)
 <figures/code/code_06_trainer_engine.png>
 
 
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 199.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `subscript' on input line 199.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `\theta' on input line 199.
-
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 199.
-
-
 LaTeX Font Warning: Font shape `TU/UnBatang(0)/m/it' undefined
 (Font)              using `TU/UnBatang(0)/m/n' instead on input line 200.
 
 [5]
 File: figures/fig_residual_comparison.png Graphic file (type bmp)
 <figures/fig_residual_comparison.png>
- [6]
-
-Package hyperref Warning: Token not allowed in a PDF string (Unicode):
-(hyperref)                removing `math shift' on input line 223.
 
 
 Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 (hyperref)                removing `math shift' on input line 223.
 
-(./generated/table_main_metrics.tex)
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 223.
+
+[6] (./generated/table_main_metrics.tex)
 File: figures/fig_quantitative_distributions.png Graphic file (type bmp)
 <figures/fig_quantitative_distributions.png>
 
@@ -890,22 +872,36 @@ Package hyperref Warning: Token not allowed in a PDF string (Unicode):
 [7]
 File: figures/fig_visual_examples_3slices.png Graphic file (type bmp)
 <figures/fig_visual_examples_3slices.png>
- [8]
 File: figures/fig_training_and_nan_diagnostics.png Graphic file (type bmp)
 <figures/fig_training_and_nan_diagnostics.png>
-
-Overfull \hbox (18.45212pt too wide) in paragraph at lines 288--289
-[]\TU/UnBatang(0)/b/n/10 정 답 (\TU/DejaVuSerif(0)/b/n/10 Target\TU/UnBatang(0)/b
-/n/10 ) 영 상 의 잡 음 오 염 및 $\OT1/cmr/m/n/10 [0\OML/cmm/m/it/10 ; \OT1/cmr/m/n/10 1
-]$ \TU/UnBatang(0)/b/n/10 범 위 이 탈 (\TU/DejaVuSansMono(0)/b/n/10 Affine_Noise_Co
-mbo\TU/UnBatang(0)/b/n/10 ): \TU/DejaVuSansMono(0)/m/n/10 RandGaussianNoised(ke
-ys=["quarter",
+ [8]
+Overfull \hbox (0.89287pt too wide) in paragraph at lines 282--283
+[]\TU/UnBatang(0)/b/n/10 이 전 에 포 크 체 크 포 인 트 를 활 용 한 복 구 확 인 : \TU/UnBatang(0)/
+m/it/10 다 행 히 \TU/DejaVuSansMono(0)/m/n/10 CheckpointSaver \TU/UnBatang(0)/m/it
+/10 가 매 에 포 크 가 중 치 (\TU/DejaVuSansMono(0)/m/n/10 network_epoch=k.pt\TU/UnBatan
+g(0)/m/it/10 )
  []
 
-[9]
+
+Overfull \hbox (11.0318pt too wide) in paragraph at lines 288--289
+[]\TU/UnBatang(0)/b/n/10 정 답 (\TU/DejaVuSerif(0)/b/n/10 Target\TU/UnBatang(0)/b
+/n/10 ) 영 상 에 까 지 노 이 즈 가 추 가 되 는 문 제 및 $\OT1/cmr/m/n/10 [0\OML/cmm/m/it/10 ; \
+OT1/cmr/m/n/10 1]$ \TU/UnBatang(0)/b/n/10 범 위 이 탈 (\TU/DejaVuSansMono(0)/b/n/10
+ Affine_Noise_Combo\TU/UnBatang(0)/b/n/10 ): \TU/DejaVuSansMono(0)/m/n/10 RandG
+aussianNoised
+ []
+
+
+Overfull \hbox (9.20348pt too wide) in paragraph at lines 289--290
+[]\TU/UnBatang(0)/b/n/10 밝 기 스 케 일 링 시 최 댓 값 ($\OT1/cmr/m/n/10 1\OML/cmm/m/it/1
+0 :\OT1/cmr/m/n/10 0$\TU/UnBatang(0)/b/n/10 ) 초 과 로 인 한 정 답 과 출 력 의 범 위 불 일 치 (
+\TU/DejaVuSansMono(0)/b/n/10 Rot90_Scale_Combo\TU/UnBatang(0)/b/n/10 ): \TU/Dej
+aVuSansMono(0)/m/n/10 RandScaleIntensityd
+ []
+
 File: figures/fig_augmentation_pitfalls.png Graphic file (type bmp)
 <figures/fig_augmentation_pitfalls.png>
- [10] (./main.aux)
+[9] [10] (./main.aux)
  ***********
 LaTeX2e <2025-11-01>
 L3 programming layer <2026-01-19>
@@ -915,15 +911,15 @@ L3 programming layer <2026-01-19>
 LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
 Package rerunfilecheck Info: File `main.out' has not changed.
-(rerunfilecheck)             Checksum: 191171C98682CA065355C6E193B9CB26;6661.
+(rerunfilecheck)             Checksum: 2FAD6F731D774C4A0E2485CC13215803;6534.
  ) 
 Here is how much of TeX's memory you used:
- 19182 strings out of 468173
- 338533 string characters out of 5435520
- 830949 words of memory out of 5000000
- 47564 multiletter control sequences out of 15000+600000
- 637869 words of font info for 175 fonts, out of 8000000 for 9000
+ 19201 strings out of 468173
+ 338983 string characters out of 5435520
+ 830958 words of memory out of 5000000
+ 47581 multiletter control sequences out of 15000+600000
+ 637999 words of font info for 177 fonts, out of 8000000 for 9000
  1348 hyphenation exceptions out of 8191
- 73i,12n,93p,938b,2825s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 73i,12n,93p,967b,2825s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
 Output written on main.pdf (10 pages).

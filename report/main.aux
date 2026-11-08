@@ -10,37 +10,37 @@
 \newlabel{tab:dataset}{{1}{2}{원본 Raw DICOM (\texttt {.IMA}, 3mm Sharp Kernel) 환자별 슬라이스 분포 및 학습·검증·테스트 분할 요약}{table.caption.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2}$[-100, 300]\text  { HU}$ 윈도잉 전처리 및 데이터 증강 레지스트리 구현}{2}{subsection.2.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {3}네트워크 아키텍처, 손실 함수 및 학습 프레임워크 구현 (Code Implementation)}{2}{section.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}해상도 보존 U-Net 계열 5종 아키텍처 설계}{2}{subsection.3.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces 구현된 5종 U-Net 계열 복원 네트워크의 구조적 특징, 파라미터 수 및 연산 복잡도($512\times 512$ 입력 기준)}}{2}{table.caption.3}\protected@file@percent }
-\newlabel{tab:arch}{{2}{2}{구현된 5종 U-Net 계열 복원 네트워크의 구조적 특징, 파라미터 수 및 연산 복잡도($512\times 512$ 입력 기준)}{table.caption.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}해상도 보존 U-Net 계열 아키텍처 설계}{2}{subsection.3.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces 구현된 U-Net 계열 복원 네트워크의 구조적 특징, 파라미터 수 및 연산 복잡도($512\times 512$ 입력 기준)}}{2}{table.caption.3}\protected@file@percent }
+\newlabel{tab:arch}{{2}{2}{구현된 U-Net 계열 복원 네트워크의 구조적 특징, 파라미터 수 및 연산 복잡도($512\times 512$ 입력 기준)}{table.caption.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.2}복합 손실 함수($L_1 + 0.1\cdot \mathcal  {L}_{\mathrm  {SSIM}}$), 평가 지표 및 학습 엔진 구현}{2}{subsection.3.2}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces 원본 Raw DICOM 데이터 로딩·전처리 및 증강 파이프라인 핵심 구현 코드 캡처}}{3}{figure.caption.2}\protected@file@percent }
 \newlabel{fig:code_data}{{1}{3}{원본 Raw DICOM 데이터 로딩·전처리 및 증강 파이프라인 핵심 구현 코드 캡처}{figure.caption.2}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces 공간 해상도 보존(\texttt  {padding=1}), 전역 잔차 연결(\texttt  {+ x}) 및 변형 U-Net 블록 구현 코드 캡처}}{4}{figure.caption.4}\protected@file@percent }
-\newlabel{fig:code_arch}{{2}{4}{공간 해상도 보존(\texttt {padding=1}), 전역 잔차 연결(\texttt {+ x}) 및 변형 U-Net 블록 구현 코드 캡처}{figure.caption.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces 커스텀 정량 지표(PSNR/SSIM), 복합 손실 함수 및 MONAI 기반 학습·검증 프레임워크 코드 캡처}}{5}{figure.caption.5}\protected@file@percent }
-\newlabel{fig:code_train}{{3}{5}{커스텀 정량 지표(PSNR/SSIM), 복합 손실 함수 및 MONAI 기반 학습·검증 프레임워크 코드 캡처}{figure.caption.5}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {4}잔차 연결(Residual Connection) 유무에 따른 U-Net 심층 비교 분석}{5}{section.4}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}전역 잔차 학습(Global Skip Residual, $\hat  {y} = x + f_\theta (x)$)의 이론적·실증적 역할}{5}{subsection.4.1}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}블록 내부 잔차 연결 유무 비교: 표준 \texttt  {U\_Net} vs.\ 순환 잔차 \texttt  {R2U\_Net}}{6}{subsection.4.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces 블록 내부 잔차 연결 유무(\texttt  {U\_Net} vs.\ \texttt  {R2U\_Net}) 및 복구된 증강 모델의 확대 ROI ($[-100, 300]\text  { HU}$), 절대 오차 맵($|{\mathrm  {Pred}-\mathrm  {GT}}|$), 그리고 해부학적 경계선(하늘색 점선)을 따른 1D Hounsfield Unit (HU) 프로파일 비교}}{6}{figure.caption.6}\protected@file@percent }
-\newlabel{fig:residual_comp}{{4}{6}{블록 내부 잔차 연결 유무(\texttt {U\_Net} vs.\ \texttt {R2U\_Net}) 및 복구된 증강 모델의 확대 ROI ($[-100, 300]\text { HU}$), 절대 오차 맵($|{\mathrm {Pred}-\mathrm {GT}}|$), 그리고 해부학적 경계선(하늘색 점선)을 따른 1D Hounsfield Unit (HU) 프로파일 비교}{figure.caption.6}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {5}정량적 평가 및 3종 이상의 시각적 복원 결과 ($[-100, 300]\text  { HU}$ Results)}{7}{section.5}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}테스트셋(\texttt  {L192}, \texttt  {L506}) 정량적 평가 결과 및 추가 분석 지표}{7}{subsection.5.1}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces 독립 테스트셋(\texttt  {L192}: 240장, \texttt  {L506}: 211장, 총 451장)에 대한 정량적 성능 비교 요약. ($^\star $: 현재 진행 중인 학습의 최신 검증 체크포인트 스냅샷, $^\dagger $: 에포크 9 \texttt  {NaN} 발생 직전 에포크 체크포인트 읽기 전용 복구 평가, $^\ddagger $: 에포크 1 내 FP16 AMP 수치 발산)}}{7}{table.caption.7}\protected@file@percent }
-\newlabel{tab:main_metrics}{{3}{7}{독립 테스트셋(\texttt {L192}: \TestLOneSlices 장, \texttt {L506}: \TestLFiveSlices 장, 총 \TestSlices 장)에 대한 정량적 성능 비교 요약. ($^\star $: 현재 진행 중인 학습의 최신 검증 체크포인트 스냅샷, $^\dagger $: 에포크 9 \texttt {NaN} 발생 직전 에포크 체크포인트 읽기 전용 복구 평가, $^\ddagger $: 에포크 1 내 FP16 AMP 수치 발산)}{table.caption.7}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces 해상도 유지 패딩(\texttt  {padding=1}), 입·출력 잔차 연결(\texttt  {+ x}) 및 변형 U-Net 블록 구현 코드 캡처}}{4}{figure.caption.4}\protected@file@percent }
+\newlabel{fig:code_arch}{{2}{4}{해상도 유지 패딩(\texttt {padding=1}), 입·출력 잔차 연결(\texttt {+ x}) 및 변형 U-Net 블록 구현 코드 캡처}{figure.caption.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces 정량 지표(PSNR/SSIM), 복합 손실 함수 및 MONAI 기반 학습·검증 프레임워크 코드 캡처}}{5}{figure.caption.5}\protected@file@percent }
+\newlabel{fig:code_train}{{3}{5}{정량 지표(PSNR/SSIM), 복합 손실 함수 및 MONAI 기반 학습·검증 프레임워크 코드 캡처}{figure.caption.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}잔차 연결(Residual Connection) 유무에 따른 U-Net 비교 분석}{5}{section.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}입·출력 간 전역 잔차 연결 유무 비교 (\texttt  {U\_Net} vs.\ \texttt  {U\_Net\_NoRes})}{5}{subsection.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}합성곱 블록 내부 잔차 연결 및 어텐션·중첩 스킵 변형 비교 (\texttt  {U\_Net} vs.\ \texttt  {AttU\_Net} vs.\ \texttt  {NestedUNet} vs.\ \texttt  {R2U\_Net})}{6}{subsection.4.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces 전역 잔차 연결 유무(\texttt  {U\_Net} vs.\ \texttt  {U\_Net\_NoRes}) 및 변형 아키텍처(\texttt  {AttU\_Net}, \texttt  {NestedUNet})의 확대 ROI ($[-100, 300]\text  { HU}$), 절대 오차 맵($|{\mathrm  {Pred}-\mathrm  {GT}}|$), 그리고 장기 경계선(하늘색 점선)을 따라 측정한 1차원 HU 밝기 변화 그래프 비교}}{6}{figure.caption.6}\protected@file@percent }
+\newlabel{fig:residual_comp}{{4}{6}{전역 잔차 연결 유무(\texttt {U\_Net} vs.\ \texttt {U\_Net\_NoRes}) 및 변형 아키텍처(\texttt {AttU\_Net}, \texttt {NestedUNet})의 확대 ROI ($[-100, 300]\text { HU}$), 절대 오차 맵($|{\mathrm {Pred}-\mathrm {GT}}|$), 그리고 장기 경계선(하늘색 점선)을 따라 측정한 1차원 HU 밝기 변화 그래프 비교}{figure.caption.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}정량적 평가 및 3종 이상의 시각적 복원 결과 ($[-100, 300]\text  { HU}$ Results)}{6}{section.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}테스트셋(\texttt  {L192}, \texttt  {L506}) 정량적 평가 결과 및 보조 지표}{7}{subsection.5.1}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces 독립 테스트셋(\texttt  {L192}: 240장, \texttt  {L506}: 211장, 총 451장)에 대한 정량적 성능 비교 요약. ($^\star $: 진행 중인 학습의 최신 검증 체크포인트 스냅샷, $^\dagger $: 에포크 9 \texttt  {NaN} 발생 직전 에포크 체크포인트 복구 평가, $^\ddagger $: 에포크 1 내 FP16 AMP 수치 발산)}}{7}{table.caption.7}\protected@file@percent }
+\newlabel{tab:main_metrics}{{3}{7}{독립 테스트셋(\texttt {L192}: \TestLOneSlices 장, \texttt {L506}: \TestLFiveSlices 장, 총 \TestSlices 장)에 대한 정량적 성능 비교 요약. ($^\star $: 진행 중인 학습의 최신 검증 체크포인트 스냅샷, $^\dagger $: 에포크 9 \texttt {NaN} 발생 직전 에포크 체크포인트 복구 평가, $^\ddagger $: 에포크 1 내 FP16 AMP 수치 발산)}{table.caption.7}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces 테스트 환자별(\texttt  {L192}, \texttt  {L506}) PSNR 비교 및 테스트 슬라이스에 대한 물리적 오차(RMSE [HU]) 분포·SSIM·경계 보존 지수(EPI) 분석}}{7}{figure.caption.8}\protected@file@percent }
 \newlabel{fig:quant_dist}{{5}{7}{테스트 환자별(\texttt {L192}, \texttt {L506}) PSNR 비교 및 테스트 슬라이스에 대한 물리적 오차(RMSE [HU]) 분포·SSIM·경계 보존 지수(EPI) 분석}{figure.caption.8}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}3종 해부학적 대표 단면 시각적 복원 결과 ($[-100, 300]\text  { HU}$ 표시)}{8}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}3종 해부학적 대표 단면 시각적 복원 결과 ($[-100, 300]\text  { HU}$ 표시)}{7}{subsection.5.2}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces 독립 테스트셋(\texttt  {L192}, \texttt  {L506})의 3종 대표 해부학적 단면에 대한 Quarter-Dose 입력, 복원 결과, Full-Dose 정답 영상 비교(모두 \textbf  {$[-100, 300]\text  { HU}$ 윈도우}로 표시) 및 적색 박스 확대 ROI·절대 오차 맵($[0, 70]\text  { HU}$)}}{8}{figure.caption.9}\protected@file@percent }
 \newlabel{fig:visual3}{{6}{8}{독립 테스트셋(\texttt {L192}, \texttt {L506})의 3종 대표 해부학적 단면에 대한 Quarter-Dose 입력, 복원 결과, Full-Dose 정답 영상 비교(모두 \textbf {$[-100, 300]\text { HU}$ 윈도우}로 표시) 및 적색 박스 확대 ROI·절대 오차 맵($[0, 70]\text { HU}$)}{figure.caption.9}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {6}오류 원인 심층 분석 및 다양한 기법 시도 고찰 (Analysis on Source of Errors)}{8}{section.6}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}오류 원인 1: FP16 혼합 정밀도(\texttt  {AMP}) + \texttt  {SSIMLoss} 분산 계산의 수치 불안정성 및 복구}{9}{subsection.6.1}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces (a) 모델·증강별 학습 손실 궤적 및 FP16 AMP 기반 \texttt  {NaN} 발생 지점 추적, (b) 10 에포크 주기 검증 PSNR 추이 및 읽기 전용 체크포인트 복구(\texttt  {U\_Net\_RandAffined} Ep.8) 결과}}{9}{figure.caption.10}\protected@file@percent }
-\newlabel{fig:train_diag}{{7}{9}{(a) 모델·증강별 학습 손실 궤적 및 FP16 AMP 기반 \texttt {NaN} 발생 지점 추적, (b) 10 에포크 주기 검증 PSNR 추이 및 읽기 전용 체크포인트 복구(\texttt {U\_Net\_RandAffined} Ep.8) 결과}{figure.caption.10}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}오류 원인 2: 저선량 CT 쌍(Paired) 복원에서의 데이터 증강 도메인 불일치}{9}{subsection.6.2}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces 4종 증강 기법 적용 시 정답(\texttt  {full}) 패치 및 정규화 강도 분포 변화 실증. 적색/청색 음영은 네트워크 출력 클램프 구간 $[0, 1]$을 이탈하여 클리핑 비대칭 및 FP16 \texttt  {SSIMLoss} 수치 불안정성을 유발하는 픽셀 영역을 나타냄}}{10}{figure.caption.11}\protected@file@percent }
-\newlabel{fig:aug_pitfalls}{{8}{10}{4종 증강 기법 적용 시 정답(\texttt {full}) 패치 및 정규화 강도 분포 변화 실증. 적색/청색 음영은 네트워크 출력 클램프 구간 $[0, 1]$을 이탈하여 클리핑 비대칭 및 FP16 \texttt {SSIMLoss} 수치 불안정성을 유발하는 픽셀 영역을 나타냄}{figure.caption.11}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}오류 원인 3: 슬라이스 단위 검증 분할과 환자 독립 테스트 간의 분포 차이}{10}{subsection.6.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {7}결론 및 향후 개선 방향 (Conclusion \& Future Improvements)}{10}{section.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}오류 원인 분석 및 시행착오 고찰 (Analysis on Source of Errors)}{8}{section.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}오류 원인 1: FP16 혼합 정밀도(\texttt  {AMP}) + \texttt  {SSIMLoss} 분산 계산의 수치 불안정성}{8}{subsection.6.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces (a) 모델·증강별 학습 손실 변화 및 FP16 AMP 환경에서의 \texttt  {NaN} 발생 지점, (b) 10 에포크 주기 검증 PSNR 추이 및 이전 체크포인트 복구(\texttt  {U\_Net\_RandAffined} Ep.8) 결과}}{9}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:train_diag}{{7}{9}{(a) 모델·증강별 학습 손실 변화 및 FP16 AMP 환경에서의 \texttt {NaN} 발생 지점, (b) 10 에포크 주기 검증 PSNR 추이 및 이전 체크포인트 복구(\texttt {U\_Net\_RandAffined} Ep.8) 결과}{figure.caption.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}오류 원인 2: 저선량 CT 복원 과제에 맞지 않는 데이터 증강을 적용했을 때의 문제점}{9}{subsection.6.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces 4종 증강 기법 적용 시 정답(\texttt  {full}) 패치 및 정규화 픽셀값 분포 변화. 적색/청색 음영은 구간 $[0, 1]$을 벗어나 정답과 출력의 범위 불일치 및 FP16 \texttt  {SSIMLoss} 수치 불안정성을 유발할 수 있는 픽셀 영역을 나타냄}}{10}{figure.caption.11}\protected@file@percent }
+\newlabel{fig:aug_pitfalls}{{8}{10}{4종 증강 기법 적용 시 정답(\texttt {full}) 패치 및 정규화 픽셀값 분포 변화. 적색/청색 음영은 구간 $[0, 1]$을 벗어나 정답과 출력의 범위 불일치 및 FP16 \texttt {SSIMLoss} 수치 불안정성을 유발할 수 있는 픽셀 영역을 나타냄}{figure.caption.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}오류 원인 3: 슬라이스 단위 무작위 검증 분할과 환자 단위 테스트 분할의 차이}{10}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}결론 및 고찰 (Conclusion)}{10}{section.7}\protected@file@percent }
 \gdef \@abspage@last{10}

@@ -68,7 +68,7 @@ def _init_registry():
                 "prob": 0.3,
             },
         },
-        # 보간 블러 및 HU 왜곡이 전혀 없는 초고속 무손실 직교 대칭(D4 Dihedral) 복합 증강
+        # 직각(90도) 회전 및 상하·좌우 반전 복합 증강
         "Rot90_Flip_Combo": {
             "composite": [
                 (
@@ -85,7 +85,7 @@ def _init_registry():
                 ),
             ]
         },
-        # 복합 증강들 등록 (하위 호환 유지; 노이즈는 입력 quarter에만 인가)
+        # 복합 증강 등록 (노이즈는 입력 영상 quarter에만 추가)
         "Affine_Noise_Combo": {
             "composite": [
                 (
