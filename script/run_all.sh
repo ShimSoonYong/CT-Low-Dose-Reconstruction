@@ -1,12 +1,8 @@
 #!/bin/bash
 
-# 빠른 모델 및 필수 비교군(NoRes -> U_Net -> AttU_Net -> NestedUNet -> R2 계열) 순으로 배치하여
-# 제한 시간 내에 최대 개수의 아키텍처 × 증강 그리드 포인트를 안전하게 완주합니다.
-models=("U_Net_NoRes" "U_Net" "AttU_Net" "NestedUNet" "R2U_Net" "R2AttU_Net")
+models=("U_Net_NoRes" "U_Net" "AttU_Net" "NestedUNet" "R2AttU_Net" "R2U_Net")
 seeds=(42)
 
-# 실패/발산 및 CPU 병목을 유발하던 무거운 보간·강도변형 증강을 제거하고,
-# HU 정량성과 Sharp 커널 고주파 질감을 100% 보존하는 초고속 무손실 D4 대칭 증강만 사용합니다.
 augs=(
   "none"
   "Rot90_Flip_Combo"
@@ -36,10 +32,22 @@ PY
   return 0
 }
 
+get_batch_size() {
+  local m="$1"
+  case "$m" in
+  NestedUNet | R2U_Net | R2AttU_Net)
+    echo 1
+    ;;
+  *)
+    echo 4
+    ;;
+  esac
+}
+
 # Grid Search 반복문 실행
 for seed in "${seeds[@]}"; do
-  for model in "${models[@]}"; do
-    for aug in "${augs[@]}"; do
+  for aug in "${augs[@]}"; do
+    for model in "${models[@]}"; do
 
       # U_Net_NoRes는 Global Residual 제거 효과를 대조하기 위한 전용 Ablation 베이스라인이므로 none만 수행
       if [ "$model" == "U_Net_NoRes" ] && [ "$aug" != "none" ]; then
@@ -52,9 +60,11 @@ for seed in "${seeds[@]}"; do
         continue
       fi
 
+      batch_size=$(get_batch_size "$model")
+
       docker container rm -f "$model" 2>/dev/null
 
-      echo "[*] Running Model: $model | Seed: $seed | Aug: $aug | MaxEpochs: $MAX_EPOCHS"
+      echo "[*] Running Model: $model | Seed: $seed | Aug: $aug | BatchSize: $batch_size | MaxEpochs: $MAX_EPOCHS"
 
       if [ "$aug" == "none" ]; then
         docker run --gpus all --rm -d --ipc=host \
@@ -64,6 +74,7 @@ for seed in "${seeds[@]}"; do
           bash -c \
           "python -m src.main \
                     --model '$model' \
+                    --batch_size '$batch_size' \
                     --epochs '$MAX_EPOCHS' \
                     --lr 2e-5 \
                     --grad_norm 1.0 \
@@ -77,6 +88,7 @@ for seed in "${seeds[@]}"; do
           bash -c \
           "python -m src.main \
                     --model '$model' \
+                    --batch_size '$batch_size' \
                     --epochs '$MAX_EPOCHS' \
                     --lr 2e-5 \
                     --grad_norm 1.0 \

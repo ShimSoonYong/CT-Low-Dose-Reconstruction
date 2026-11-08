@@ -1,2 +1,5 @@
-[*] Running Model: U_Net_NoRes | Seed: 42 | Aug: none | MaxEpochs: 100
-b35cee16067eff3eabf8351cfba7780eef19625c3186b0af773e5088cad11c88
+[=] Skipping already converged run: log/U_Net_NoRes_none (set SKIP_COMPLETED=0 to force rerun)
+[=] Skipping already converged run: log/U_Net_none (set SKIP_COMPLETED=0 to force rerun)
+[=] Skipping already converged run: log/AttU_Net_none (set SKIP_COMPLETED=0 to force rerun)
+[*] Running Model: NestedUNet | Seed: 42 | Aug: none | BatchSize: 1 | MaxEpochs: 100
+4d6acf485cfed13071ffdb6bf4bfff5976b9de828ef583cf5e322fd6b7baee4b
